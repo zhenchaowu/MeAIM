@@ -409,23 +409,27 @@ class MeAIM(GeneralRecommender):
         
 
     def full_sort_predict(self, interaction):
-        user = interaction[0]
+        
         u_cge_embs, i_cge_embs, uv_mge_embs, iv_mge_embs, ut_mge_embs, it_mge_embs = self.forward()
-
-        batch_scores = None
-        for u in user:
-            temp_uv_embs = uv_mge_embs[u].unsqueeze(1).repeat(1, self.n_items).T
-            temp_ut_embs = ut_mge_embs[u].unsqueeze(1).repeat(1, self.n_items).T
-            temp_uc_embs = u_cge_embs[u].unsqueeze(1).repeat(1, self.n_items).T  
-            
-            scores, _ = self.compute_score(temp_uv_embs, temp_ut_embs, temp_uc_embs, iv_mge_embs, it_mge_embs, i_cge_embs)
-            
-            try:
-                batch_scores = torch.cat((batch_scores, scores), 0)
-            except:
-                batch_scores = scores
-                
-        return batch_scores
+        
+        user = interaction[0]
+        user_tensor = user.unsqueeze(1).repeat(1, self.n_items).flatten()  #[7219200]
+        item_tensor = torch.Tensor(list(range(self.n_items))).unsqueeze(1).repeat(1, len(user)).T.flatten().long()
+        
+        test_uv_embs = uv_mge_embs[user_tensor]
+        test_ut_embs = ut_mge_embs[user_tensor]
+        test_uc_embs = u_cge_embs[user_tensor]
+        
+        test_iv_embs = iv_mge_embs[item_tensor]
+        test_it_embs = it_mge_embs[item_tensor]
+        test_ic_embs = i_cge_embs[item_tensor]
+        
+        
+        scores, _ = self.compute_score(test_uv_embs, test_ut_embs, test_uc_embs, test_iv_embs, test_it_embs, test_ic_embs)
+        
+        scores = scores.reshape(len(user), self.n_items)
+        
+        return scores
         
         
         
